@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARC GUARD Digitals | AI Resume Architect</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                        mono: ['Roboto Mono', 'monospace'],
+                    },
+                    colors: {
+                        glass: "rgba(255, 255, 255, 0.05)",
+                        glassBorder: "rgba(255, 255, 255, 0.1)",
+                        accent: "var(--accent-color, #3b82f6)",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --accent-color: #3b82f6;
+            --bg-dark: #0f172a;
+            --bg-light: #f8fafc;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: white;
+            overflow-x: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        body.light-mode {
+            background-color: var(--bg-light);
+            color: #1e293b;
+        }
+
+        /* Cinematic Intro */
+        #intro-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background: #000;
+        }
+
+        .intro-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Playfair Display', serif;
+            font-size: 4rem;
+            color: white;
+            opacity: 0;
+            text-align: center;
+            z-index: 10000;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        body.light-mode .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-mode .glass-input {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: #1e293b;
+        }
+
+        .glass-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+            outline: none;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 4px; }
+
+        /* Resume Preview */
+        #resume-preview {
+            background: white;
+            color: black;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            min-height: 297mm;
+            width: 210mm;
+            margin: 0 auto;
+        }
+
+        /* Loader */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid var(--accent-color);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Print styles */
+        @media print {
+            body * { visibility: hidden; }
+            #resume-preview, #resume-preview * { visibility: visible; }
+            #resume-preview { position: absolute; left: 0; top: 0; width: 100%; margin: 0; box-shadow: none; }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body class="antialiased h-screen flex flex-col overflow-hidden">
+
+    <!-- Cinematic Intro -->
+    <div id="intro-canvas"></div>
+    <div class="intro-text">
+        <div>ARC GUARD</div>
+        <div class="text-xl font-sans tracking-[0.5em] mt-4 text-blue-400">DIGITALS</div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-container" class="flex-1 flex flex-col opacity-0 h-full" style="display: none;">
+        
+        <!-- Header -->
+        <header class="glass-panel h-16 flex items-center justify-between px-6 z-50 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <i data-lucide="shield" class="text-white w-5 h-5"></i>
+                </div>
+                <h1 class="font-serif text-xl tracking-wide font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">ARC GUARD <span class="text-xs font-sans font-normal text-blue-400 tracking-widest ml-1">RESUME ARCHITECT</span></h1>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="AppState.toggleTheme()" class="p-2 rounded-full hover:bg-white/10 transition-colors" title="Toggle Theme">
+                    <i data-lucide="sun" class="w-5 h-5"></i>
+                </button>
+                <button onclick="AppState.exportJSON()" class="p-2 rounded-full hover:bg-white/10 transition-colors" title="Export JSON">
+                    <i data-lucide="file-json" class="w-5 h-5"></i>
+                </button>
+                <div class="h-6 w-px bg-white/10"></div>
+                <button onclick="ExportEngine.exportPDF()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40">
+                    <i data-lucide="download" class="w-4 h-4"></i> Export PDF
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="flex-1 flex overflow-hidden">
+            
+            <!-- Sidebar -->
+            <aside class="w-[450px] glass-panel border-r border-white/5 flex flex-col shrink-0 z-40 overflow-hidden">
+                <div class="flex border-b border-white/5">
+                    <button class="flex-1 py-3 text-sm font-medium text-blue-400 border-b-2 border-blue-400 bg-white/5">Editor</button>
+                    <button onclick="alert('AI Tab - Use the panel below')" class="flex-1 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors">AI Assistant</button>
+                    <button onclick="document.querySelector('aside:last-of-type').scrollIntoView({behavior: 'smooth'})" class="flex-1 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors">Analytics</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6 space-y-6" id="editor-scroll-area">
+                    
+                    <!-- Design System -->
+                    <div class="space-y-4">
+                        <h3 class="text-xs uppercase tracking-widest text-gray-500 font-bold">Design System</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block">Template</label>
+                                <select id="template-select" onchange="TemplateEngine.setTemplate(this.value)" class="w-full glass-input rounded p-2 text-sm">
+                                    <option value="modern">Modern Pro</option>
+                                    <option value="classic">Classic Executive</option>
+                                    <option value="minimal">Minimalist</option>
+                                    <option value="technical">Technical Grid</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block">Accent</label>
+                                <div class="flex gap-2 mt-1">
+                                    <button onclick="TemplateEngine.setAccent('#3b82f6')" class="w-6 h-6 rounded-full bg-blue-500 ring-2 ring-offset-2 ring-offset-[#0f172a] ring-transparent hover:ring-blue-500 transition-all"></button>
+                                    <button onclick="TemplateEngine.setAccent('#8b5cf6')" class="w-6 h-6 rounded-full bg-purple-500 ring-2 ring-offset-2 ring-offset-[#0f172a] ring-transparent hover:ring-purple-500 transition-all"></button>
+                                    <button onclick="TemplateEngine.setAccent('#10b981')" class="w-6 h-6 rounded-full bg-emerald-500 ring-2 ring-offset-2 ring-offset-[#0f172a] ring-transparent hover:ring-emerald-500 transition-all"></button>
+                                    <button onclick="TemplateEngine.setAccent('#f59e0b')" class="w-6 h-6 rounded-full bg-amber-500 ring-2 ring-offset-2 ring-offset-[#0f172a] ring-transparent hover:ring-amber-500 transition-all"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Info -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xs uppercase tracking-widest text-gray-500 font-bold">Personal Info</h3>
+                            <i data-lucide="user" class="w-4 h-4 text-gray-600"></i>
+                        </div>
+                        <div class="space-y-3">
+                            <input type="text" id="input-name" placeholder="Full Name" class="w-full glass-input rounded p-3 text-lg font-serif font-bold">
+                            <input type="text" id="input-title" placeholder="Professional Title" class="w-full glass-input rounded p-2 text-sm">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="email" id="input-email" placeholder="Email" class="glass-input rounded p-2 text-sm">
+                                <input type="text" id="input-phone" placeholder="Phone" class="glass-input rounded p-2 text-sm">
+                            </div>
+                            <input type="text" id="input-location" placeholder="Location" class="w-full glass-input rounded p-2 text-sm">
+                            <textarea id="input-summary" placeholder="Professional Summary" class="w-full glass-input rounded p-2 text-sm h-20 resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Sections -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xs uppercase tracking-widest text-gray-500 font-bold">Sections</h3>
+                            <button onclick="UIManager.addSection()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition-colors">+ Add</button>
+                        </div>
+                        <div id="sections-list" class="space-y-3"></div>
+                    </div>
+
+                    <!-- AI Panel -->
+                    <div class="p-4 rounded-xl bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/20">
+                        <h3 class="text-sm font-bold text-blue-300 mb-2 flex items-center gap-2">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i> AI Assistant
+                        </h3>
+                        <textarea id="ai-job-input" class="w-full glass-input rounded p-2 text-xs h-20 mb-2" placeholder="Paste job description here..."></textarea>
+                        <button onclick="AIEngine.analyzeJobDescription()" class="w-full py-2 bg-blue-600/80 hover:bg-blue-600 rounded text-xs font-bold transition-colors flex justify-center items-center gap-2">
+                            <span id="ai-btn-text">Analyze & Optimize</span>
+                            <div id="ai-loader" class="loader hidden"></div>
+                        </button>
+                    </div>
+
+                </div>
+            </aside>
+
+            <!-- Preview -->
+            <main class="flex-1 bg-gray-900/50 relative overflow-y-auto flex justify-center p-8" id="preview-pane">
+                <div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
+                    <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900 via-gray-900 to-black"></div>
+                </div>
+                <div id="resume-wrapper" class="relative z-10 transition-all duration-500">
+                    <div id="resume-preview"></div>
+                </div>
+            </main>
+
+            <!-- Analytics -->
+            <aside class="w-[300px] glass-panel border-l border-white/5 flex flex-col shrink-0 z-40 hidden xl:flex">
+                <div class="p-4 border-b border-white/5">
+                    <h3 class="font-bold text-sm">ATS Score</h3>
+                </div>
+                <div class="p-6 flex flex-col items-center justify-center">
+                    <div class="relative w-32 h-32 mb-4">
+                        <canvas id="atsChart"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col">
+                            <span id="ats-score-display" class="text-3xl font-bold">0</span>
+                            <span class="text-[10px] uppercase text-gray-500">Score</span>
+                        </div>
+                    </div>
+                    <div class="w-full space-y-3">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400">Keywords</span>
+                                <span class="text-white" id="kw-density">0%</span>
+                            </div>
+                            <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="kw-bar" class="h-full bg-blue-500 w-0 transition-all duration-500"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400">Readability</span>
+                                <span class="text-white" id="read-score">0%</span>
+                            </div>
+                            <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="read-bar" class="h-full bg-purple-500 w-0 transition-all duration-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 p-4 border-t border-white/5 overflow-y-auto">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">Suggestions</h4>
+                    <ul id="ai-suggestions" class="space-y-2 text-xs text-gray-300">
+                        <li class="flex gap-2 items-start opacity-50">
+                            <i data-lucide="info" class="w-3 h-3 mt-0.5 shrink-0"></i>
+                            <span>Start building your resume to get insights.</span>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        // STORAGE MODULE
+        const Storage = {
+            save(data) {
+                try {
+                    localStorage.setItem('arcguard_resume_v2', JSON.stringify(data));
+                } catch (e) {
+                    console.error('Storage error:', e);
+                }
+            },
+            
+            load() {
+                try {
+                    const saved = localStorage.getItem('arcguard_resume_v2');
+                    return saved ? JSON.parse(saved) : null;
+                } catch (e) {
+                    console.error('Load error:', e);
+                    return null;
+                }
+            },
+
+            exportJSON() {
+                const data = AppState.data;
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'resume-data.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        };
+
+        // APP STATE
+        const AppState = {
+            data: {
+                personal: { name: '', title: '', email: '', phone: '', location: '', summary: '' },
+                sections: [
+                    { id: 'exp_1', type: 'experience', title: 'Experience', items: [] },
+                    { id: 'edu_1', type: 'education', title: 'Education', items: [] },
+                    { id: 'skl_1', type: 'skills', title: 'Skills', items: [] }
+                ],
+                config: { template: 'modern', accent: '#3b82f6', font: 'Inter' }
+            },
+
+            init() {
+                const saved = Storage.load();
+                if (saved) {
+                    // Merge saved data with defaults to ensure structure
+                    this.data = { ...this.data, ...saved };
+                    if (saved.personal) this.data.personal = saved.personal;
+                    if (saved.sections) this.data.sections = saved.sections;
+                    if (saved.config) this.data.config = { ...this.data.config, ...saved.config };
+                }
+                
+                this.setupListeners();
+                UIManager.init();
+                this.render();
+                
+                // Apply saved accent
+                document.documentElement.style.setProperty('--accent-color', this.data.config.accent);
+                
+                // Auto-save
+                setInterval(() => Storage.save(this.data), 3000);
+            },
+
+            setupListeners() {
+                // Personal info listeners
+                const fields = ['name', 'title', 'email', 'phone', 'location', 'summary'];
+                fields.forEach(field => {
+                    const el = document.getElementById('input-' + field);
+                    if (el) {
+                        el.value = this.data.personal[field] || '';
+                        el.addEventListener('input', (e) => {
+                            this.data.personal[field] = e.target.value;
+                            this.render();
+                        });
+                    }
+                });
+            },
+
+            updateSectionItem(secId, itemId, field, value) {
+                const section = this.data.sections.find(s => s.id === secId);
+                if (!section) return;
+                const item = section.items.find(i => i.id === itemId);
+                if (item) {
+                    item[field] = value;
+                    this.render();
+                }
+            },
+
+            addSectionItem(secId) {
+                const section = this.data.sections.find(s => s.id === secId);
+                if (section) {
+                    section.items.push({
+                        id: 'item_' + Date.now(),
+                        title: 'New Position',
+                        subtitle: 'Company',
+                        date: '2024',
+                        description: ''
+                    });
+                    UIManager.renderSections(this.data.sections);
+                    this.render();
+                }
+            },
+
+            removeSectionItem(secId, itemId) {
+                const section = this.data.sections.find(s => s.id === secId);
+                if (section) {
+                    section.items = section.items.filter(i => i.id !== itemId);
+                    UIManager.renderSections(this.data.sections);
+                    this.render();
+                }
+            },
+
+            moveSection(fromIndex, toIndex) {
+                const item = this.data.sections.splice(fromIndex, 1)[0];
+                this.data.sections.splice(toIndex, 0, item);
+                this.render();
+            },
+
+            addSection() {
+                const types = ['experience', 'education', 'skills', 'projects'];
+                const type = prompt('Section type: ' + types.join(', '), 'projects');
+                if (type && types.includes(type)) {
+                    this.data.sections.push({
+                        id: 'sec_' + Date.now(),
+                        type: type,
+                        title: type.charAt(0).toUpperCase() + type.slice(1),
+                        items: []
+                    });
+                    UIManager.renderSections(this.data.sections);
+                }
+            },
+
+            render() {
+                TemplateEngine.render(this.data);
+                ATSEngine.analyze(this.data);
+            },
+
+            toggleTheme() {
+                document.body.classList.toggle('light-mode');
+            },
+
+            exportJSON() {
+                Storage.exportJSON();
+            }
+        };
+
+        // UI MANAGER
+        const UIManager = {
+            init() {
+                this.renderSections(AppState.data.sections);
+                
+                // Setup sortable
+                const el = document.getElementById('sections-list');
+                if (el && typeof Sortable !== 'undefined') {
+                    Sortable.create(el, {
+                        handle: '.drag-handle',
+                        onEnd: (evt) => {
+                            AppState.moveSection(evt.oldIndex, evt.newIndex);
+                        }
+                    });
+                }
+            },
+
+            renderSections(sections) {
+                const container = document.getElementById('sections-list');
+                if (!container) return;
+                
+                container.innerHTML = sections.map(sec => `
+                    <div class="glass-panel rounded-lg p-3" data-id="${sec.id}">
+                        <div class="flex justify-between items-center mb-2 cursor-move drag-handle">
+                            <span class="text-xs font-bold uppercase text-gray-400">${sec.title}</span>
+                            <i data-lucide="grip-vertical" class="w-4 h-4 text-gray-600"></i>
+                        </div>
+                        <div class="space-y-2">
+                            ${sec.items.map(item => this.renderItemEditor(sec.id, item)).join('')}
+                        </div>
+                        <button onclick="AppState.addSectionItem('${sec.id}')" class="mt-2 w-full py-1 border border-dashed border-gray-600 text-gray-500 text-xs rounded hover:bg-white/5">+ Add Entry</button>
+                    </div>
+                `).join('');
+                
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            },
+
+            renderItemEditor(secId, item) {
+                return `
+                    <div class="bg-black/20 p-2 rounded border border-white/5 relative group/item">
+                        <button onclick="AppState.removeSectionItem('${secId}', '${item.id}')" class="absolute top-1 right-1 text-red-400 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                        </button>
+                        <input type="text" class="w-full bg-transparent border-none p-0 text-sm font-bold placeholder-gray-600 focus:ring-0" 
+                            value="${item.title}" placeholder="Title"
+                            oninput="AppState.updateSectionItem('${secId}', '${item.id}', 'title', this.value)">
+                        <input type="text" class="w-full bg-transparent border-none p-0 text-xs text-gray-400 placeholder-gray-700 focus:ring-0 mt-1" 
+                            value="${item.subtitle}" placeholder="Subtitle"
+                            oninput="AppState.updateSectionItem('${secId}', '${item.id}', 'subtitle', this.value)">
+                        <input type="text" class="w-full bg-transparent border-none p-0 text-xs text-gray-500 placeholder-gray-700 focus:ring-0 mt-1" 
+                            value="${item.date}" placeholder="Date"
+                            oninput="AppState.updateSectionItem('${secId}', '${item.id}', 'date', this.value)">
+                        <textarea class="w-full bg-transparent border-none p-0 text-xs text-gray-300 placeholder-gray-700 focus:ring-0 mt-1 h-12 resize-none" 
+                            placeholder="Description"
+                            oninput="AppState.updateSectionItem('${secId}', '${item.id}', 'description', this.value)">${item.description}</textarea>
+                    </div>
+                `;
+            },
+
+            addSection() {
+                AppState.addSection();
+            }
+        };
+
+        // TEMPLATE ENGINE
+        const TemplateEngine = {
+            setTemplate(name) {
+                AppState.data.config.template = name;
+                AppState.render();
+            },
+
+            setAccent(color) {
+                AppState.data.config.accent = color;
+                document.documentElement.style.setProperty('--accent-color', color);
+                AppState.render();
+            },
+
+            render(data) {
+                const container = document.getElementById('resume-preview');
+                if (!container) return;
+                
+                const { personal, sections, config } = data;
+                
+                let html = `
+                    <div class="p-[15mm] h-full box-border" style="font-family: ${config.font}, sans-serif;">
+                        <header class="border-b-2 pb-4 mb-6" style="border-color: ${config.accent}">
+                            <h1 class="text-4xl font-serif font-bold text-gray-900 uppercase tracking-tight">${personal.name || 'Your Name'}</h1>
+                            <p class="text-lg text-gray-600 mt-1 font-medium">${personal.title || 'Professional Title'}</p>
+                            <div class="flex flex-wrap gap-3 mt-3 text-xs text-gray-500 font-mono">
+                                ${personal.email ? `<span>${personal.email}</span>` : ''}
+                                ${personal.phone ? `<span>• ${personal.phone}</span>` : ''}
+                                ${personal.location ? `<span>• ${personal.location}</span>` : ''}
+                            </div>
+                        </header>
+                `;
+
+                if (personal.summary) {
+                    html += `<div class="mb-6 text-sm text-gray-700 leading-relaxed">${personal.summary}</div>`;
+                }
+
+                sections.forEach(sec => {
+                    if (sec.items.length === 0) return;
+                    
+                    html += `
+                        <section class="mb-6">
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-gray-900 mb-3 border-b border-gray-200 pb-1" style="color:${config.accent}">
+                                ${sec.title}
+                            </h2>
+                            <div class="space-y-3">
+                    `;
+                    
+                    sec.items.forEach(item => {
+                        html += `
+                            <div>
+                                <div class="flex justify-between items-baseline">
+                                    <h3 class="font-bold text-gray-800 text-sm">${item.title}</h3>
+                                    <span class="text-xs text-gray-500 font-mono">${item.date}</span>
+                                </div>
+                                <div class="text-xs text-gray-600 font-medium">${item.subtitle}</div>
+                                <p class="text-xs text-gray-600 leading-relaxed mt-1 whitespace-pre-line">${item.description}</p>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div></section>`;
+                });
+
+                html += `</div>`;
+                container.innerHTML = html;
+            }
+        };
+
+        // ATS ENGINE
+        const ATSEngine = {
+            chart: null,
+
+            init() {
+                const ctx = document.getElementById('atsChart');
+                if (!ctx || typeof Chart === 'undefined') return;
+                
+                this.chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Score', 'Gap'],
+                        datasets: [{
+                            data: [0, 100],
+                            backgroundColor: [AppState.data.config.accent, 'rgba(200,200,200,0.1)'],
+                            borderWidth: 0,
+                            cutout: '75%'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                    }
+                });
+            },
+
+            analyze(data) {
+                const text = Object.values(data.personal).join(' ') + ' ' + 
+                    data.sections.map(s => s.items.map(i => Object.values(i).join(' ')).join(' ')).join(' ');
+                
+                const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                const uniqueWords = [...new Set(words)];
+                
+                // Calculate scores
+                const hasName = data.personal.name.length > 2 ? 25 : 0;
+                const hasContact = (data.personal.email.length > 5 || data.personal.phone.length > 5) ? 15 : 0;
+                const contentLength = Math.min(30, words.length / 10);
+                const sectionCount = Math.min(20, data.sections.filter(s => s.items.length > 0).length * 5);
+                
+                const score = Math.min(100, Math.floor(hasName + hasContact + contentLength + sectionCount + 10));
+                const density = Math.min(100, Math.floor(uniqueWords.length / 5));
+                const readability = Math.min(100, Math.floor(words.length / 3));
+
+                this.updateUI(score, density, readability);
+            },
+
+            updateUI(score, density, readability) {
+                const scoreEl = document.getElementById('ats-score-display');
+                const kwEl = document.getElementById('kw-density');
+                const kwBar = document.getElementById('kw-bar');
+                const readEl = document.getElementById('read-score');
+                const readBar = document.getElementById('read-bar');
+
+                if (scoreEl) scoreEl.innerText = score;
+                if (kwEl) kwEl.innerText = density + '%';
+                if (kwBar) kwBar.style.width = density + '%';
+                if (readEl) readEl.innerText = readability + '%';
+                if (readBar) readBar.style.width = readability + '%';
+
+                if (this.chart) {
+                    this.chart.data.datasets[0].data = [score, 100 - score];
+                    this.chart.data.datasets[0].backgroundColor[0] = AppState.data.config.accent;
+                    this.chart.update();
+                }
+            }
+        };
+
+        // AI ENGINE
+        const AIEngine = {
+            async analyzeJobDescription() {
+                const input = document.getElementById('ai-job-input');
+                const btnText = document.getElementById('ai-btn-text');
+                const loader = document.getElementById('ai-loader');
+                
+                if (!input.value.trim()) {
+                    alert('Please enter a job description');
+                    return;
+                }
+
+                btnText.innerText = 'Analyzing...';
+                loader.classList.remove('hidden');
+
+                // Simulate AI processing
+                await new Promise(r => setTimeout(r, 1500));
+
+                const suggestions = [
+                    'Add metrics to your experience (e.g., "Increased sales by 25%")',
+                    'Include keywords: Leadership, Strategy, Analytics',
+                    'Your summary is too long. Keep it under 3 lines.',
+                    'Add more technical skills relevant to this role'
+                ];
+
+                const list = document.getElementById('ai-suggestions');
+                if (list) {
+                    list.innerHTML = suggestions.map(s => `
+                        <li class="flex gap-2 items-start text-blue-300">
+                            <i data-lucide="check-circle" class="w-3 h-3 mt-0.5 shrink-0"></i>
+                            <span>${s}</span>
+                        </li>
+                    `).join('');
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+
+                btnText.innerText = 'Analyze & Optimize';
+                loader.classList.add('hidden');
+            }
+        };
+
+        // EXPORT ENGINE
+        const ExportEngine = {
+            exportPDF() {
+                const element = document.getElementById('resume-preview');
+                if (!element) return;
+
+                const opt = {
+                    margin: 0,
+                    filename: 'arcguard-resume.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opt).from(element).save();
+            }
+        };
+
+        // CINEMATIC INTRO
+        const Intro = {
+            init() {
+                const canvas = document.getElementById('intro-canvas');
+                if (!canvas || typeof THREE === 'undefined') {
+                    this.skip();
+                    return;
+                }
+
+                try {
+                    const scene = new THREE.Scene();
+                    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+                    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+                    
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+                    // Create particles
+                    const particlesGeometry = new THREE.BufferGeometry();
+                    const particlesCount = 1500;
+                    const posArray = new Float32Array(particlesCount * 3);
+
+                    for(let i = 0; i < particlesCount * 3; i++) {
+                        posArray[i] = (Math.random() - 0.5) * 100;
+                    }
+
+                    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+                    const material = new THREE.PointsMaterial({
+                        size: 0.5,
+                        color: 0x3b82f6,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+
+                    const particlesMesh = new THREE.Points(particlesGeometry, material);
+                    scene.add(particlesMesh);
+
+                    camera.position.z = 30;
+
+                    // Animation
+                    let frame = 0;
+                    const animate = () => {
+                        if (frame > 200) return; // Stop after animation
+                        
+                        requestAnimationFrame(animate);
+                        particlesMesh.rotation.y += 0.001;
+                        particlesMesh.rotation.x += 0.0005;
+                        
+                        if (frame < 100) {
+                            camera.position.z -= 0.2;
+                        }
+                        
+                        renderer.render(scene, camera);
+                        frame++;
+                    };
+                    animate();
+
+                    // GSAP Animation
+                    if (typeof gsap !== 'undefined') {
+                        const tl = gsap.timeline({
+                            onComplete: () => this.end(canvas)
+                        });
+
+                        tl.to('.intro-text', { opacity: 1, duration: 1.5, scale: 1 })
+                          .to('.intro-text', { opacity: 0, duration: 0.8, delay: 0.5 })
+                          .to(canvas, { opacity: 0, duration: 1 }, "-=0.3");
+                    } else {
+                        setTimeout(() => this.end(canvas), 3000);
+                    }
+
+                } catch (e) {
+                    console.error('Intro error:', e);
+                    this.skip();
+                }
+            },
+
+            end(canvas) {
+                canvas.style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                setTimeout(() => {
+                    document.getElementById('app-container').style.opacity = '1';
+                }, 100);
+                
+                // Init chart after intro
+                setTimeout(() => ATSEngine.init(), 500);
+            },
+
+            skip() {
+                const canvas = document.getElementById('intro-canvas');
+                if (canvas) canvas.style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                document.getElementById('app-container').style.opacity = '1';
+                ATSEngine.init();
+            }
+        };
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            Intro.init();
+            AppState.init();
+        });
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (AppState.chart) AppState.chart.resize();
+        });
+    </script>
+</body>
+</html>
